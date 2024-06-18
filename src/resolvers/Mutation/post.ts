@@ -1,5 +1,5 @@
 export const postResolver = {
-  addPost: async (params: any, agrs: any, { prisma, userInfo }: any) => {
+  addPost: async (params: any, { post }: any, { prisma, userInfo }: any) => {
     if (!userInfo) {
       return {
         userError: "Unauthorized access!",
@@ -7,7 +7,7 @@ export const postResolver = {
       };
     }
 
-    if (!agrs.title || !agrs.content) {
+    if (!post.title || !post.content) {
       return {
         userError: "Title and content is required!",
         post: null,
@@ -16,8 +16,8 @@ export const postResolver = {
 
     const newPost = await prisma.post.create({
       data: {
-        title: agrs.title,
-        content: agrs.content,
+        title: post.title,
+        content: post.content,
         authorId: userInfo.userId,
       },
     });
@@ -26,4 +26,51 @@ export const postResolver = {
       post: newPost,
     };
   },
+    updatePost: async (params: any, args: any, { prisma, userInfo }: any) => {
+      if (!userInfo) {
+        return {
+          userError: "Unauthorized access!",
+          post: null,
+        };
+      }
+      const user = await prisma.user.findUnique({
+        where: {
+          id: userInfo.userId,
+        },
+      });
+      if (!user) {
+        return {
+          userError: "User Not Found!",
+          post: null,
+        };
+      }
+      const post = await prisma.post.findUnique({
+        where: {
+          id: Number(args.postId),
+        },
+      });
+      if (!post) {
+        return {
+          userError: "Post Not Found!",
+          post: null,
+        };
+        }
+        if (post.authorId !== user.id) {
+            return {
+              userError: "Post not won not by user!",
+              post: null,
+            };
+
+        }
+        const updatedPost = await prisma.post.update({
+            where: {
+              id: Number(args.postId),
+            },
+            data: args.post,
+        })
+        return {
+          userError: null,
+          post: updatedPost,
+        };
+    },
 };
