@@ -1,3 +1,5 @@
+import { checkUserAccess } from "../../utils/checkUserAccess";
+
 export const postResolver = {
   addPost: async (params: any, { post }: any, { prisma, userInfo }: any) => {
     if (!userInfo) {
@@ -26,51 +28,53 @@ export const postResolver = {
       post: newPost,
     };
   },
-    updatePost: async (params: any, args: any, { prisma, userInfo }: any) => {
-      if (!userInfo) {
-        return {
-          userError: "Unauthorized access!",
-          post: null,
-        };
-      }
-      const user = await prisma.user.findUnique({
-        where: {
-          id: userInfo.userId,
-        },
-      });
-      if (!user) {
-        return {
-          userError: "User Not Found!",
-          post: null,
-        };
-      }
-      const post = await prisma.post.findUnique({
-        where: {
-          id: Number(args.postId),
-        },
-      });
-      if (!post) {
-        return {
-          userError: "Post Not Found!",
-          post: null,
-        };
-        }
-        if (post.authorId !== user.id) {
-            return {
-              userError: "Post not won not by user!",
-              post: null,
-            };
+  updatePost: async (params: any, args: any, { prisma, userInfo }: any) => {
+    if (!userInfo) {
+      return {
+        userError: "Unauthorized access!",
+        post: null,
+      };
+    }
 
-        }
-        const updatedPost = await prisma.post.update({
-            where: {
-              id: Number(args.postId),
-            },
-            data: args.post,
-        })
-        return {
-          userError: null,
-          post: updatedPost,
-        };
-    },
+    const error = await checkUserAccess(prisma, userInfo.userId, args.postId);
+    if (error) {
+      return error;
+    }
+
+    const updatedPost = await prisma.post.update({
+      where: {
+        id: Number(args.postId),
+      },
+      data: args.post,
+    });
+
+    return {
+      userError: null,
+      post: updatedPost,
+    };
+  },
+  deletePost: async (params: any, args: any, { prisma, userInfo }: any) => {
+    if (!userInfo) {
+      return {
+        userError: "Unauthorized access!",
+        post: null,
+      };
+    }
+
+    const error = await checkUserAccess(prisma, userInfo.userId, args.postId);
+    if (error) {
+      return error;
+    }
+
+    const deletePost = await prisma.post.delete({
+      where: {
+        id: Number(args.postId),
+      }
+    });
+
+    return {
+      userError: null,
+      post: deletePost,
+    };
+  },
 };
